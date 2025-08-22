@@ -1,10 +1,19 @@
-# give-me-hours Homebrew Package
+# Give Me Hours - give-me-hours script
 
-A command-line tool to track git commit hours across multiple repositories in the current directory.
+A command-line tool to list out hours worked based on git log hours in a working directory.
 
 ## Installation
 
-### Method 1: Direct Installation (Recommended for testing)
+### Method 1: Homebrew Formula (Recommended)
+   ```bash
+   # Add your tap
+   brew tap francois-p-peloquin/tap
+
+   # Install the package
+   brew install give-me-hours
+   ```
+
+### Method 2: Direct Installation (For testing purposes)
 
 1. **Install git-hours dependency:**
    ```bash
@@ -23,54 +32,9 @@ A command-line tool to track git commit hours across multiple repositories in th
    sudo mv give-me-hours /usr/local/bin/
    ```
 
-### Method 2: Homebrew Formula (For distribution)
-
-1. **Create a GitHub repository** with the following structure:
-   ```
-   give-me-hours/
-   ├── give-me-hours           # The executable script
-   ├── Formula/
-   │   └── give-me-hours.rb    # The Homebrew formula
-   ├── README.md
-   └── LICENSE
-   ```
-
-2. **Create a Homebrew tap:**
-   ```bash
-   # Create your own tap repository
-   git clone https://github.com/francois-p-peloquin/homebrew-tap.git
-   cd homebrew-tap
-
-   # Add the formula
-   cp give-me-hours.rb Formula/
-   git add . && git commit -m "Add give-me-hours formula"
-   git push
-   ```
-
-3. **Install via Homebrew:**
-   ```bash
-   # Add your tap
-   brew tap francois-p-peloquin/tap
-
-   # Install the package
-   brew install give-me-hours
-   ```
-
-## Prerequisites
-
-1. **Git configuration:**
-   ```bash
-   git config --global user.name "Your Name"
-   ```
-
-2. **git-hours dependency:**
-   ```bash
-   npm install -g git-hours
-   ```
-
 ## Usage
 
-Navigate to a directory containing multiple git repositories and run:
+Navigate to your work directory (eg `~/Web/`) containing multiple git repositories and run:
 
 ```bash
 # Show today's hours
@@ -88,6 +52,18 @@ give-me-hours today --file
 # Show help
 give-me-hours --help
 ```
+
+## Prerequisites
+
+1. **Git configuration:**
+   ```bash
+   git config --global user.name "Your Name"
+   ```
+
+2. **git-hours dependency:**
+   ```bash
+   npm install -g git-hours
+   ```
 
 ## Features
 
@@ -114,17 +90,39 @@ Getting hours from 2024-08-22 00:00:00 to 2024-08-22 23:59:59
 └──────────────────────────────────────────┴────────────┘
 ```
 
-## Distribution Steps
+## Creating a new release on Homebrew
 
-1. **Create the GitHub repository** with the script and formula
-2. **Tag a release:**
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-3. **Update the formula** with the correct URL and SHA256 hash
-4. **Test the installation** on a clean system
-5. **Submit to Homebrew** (optional) or distribute via your own tap
+1. **Create a new release on Github** with a version number and new tag (eg `v1.0.9`).
+2. **Update `Formula/give-me-hours.sh`** with the latest `url`, `version`, and `sha256` variables.
+```bash
+  # Grab the latest SHA256 variable
+  curl -sL https://github.com/francois-p-peloquin/give-me-hours/archive/v1.0.9.tar.gz | shasum -a 256
+```
+3. **Copy `Formula/give-me-hours.sh` to your homebrew-tap** repo.
+```bash
+  # In the working directory
+  cp ./Formula/give-me-hours.rb ../homebrew-tap/Formula/give-me-hours.rb
+```
+4. **Re-submit to Homebrew** forcefully.
+```bash
+  # Remove the tap completely
+  brew untap francois-p-peloquin/tap
+
+  # Clear Homebrew cache
+  brew cleanup --prune=all
+
+  # Re-add the tap
+  brew tap francois-p-peloquin/tap
+
+  # Verify the formula is updated
+  brew info francois-p-peloquin/tap/give-me-hours
+```
+5. **Clear the Homebrew cache and reinstall** on your machine
+```bash
+  # Install or upgrade
+  brew upgrade give-me-hours
+  brew install give-me-hours
+```
 
 ## Notes
 

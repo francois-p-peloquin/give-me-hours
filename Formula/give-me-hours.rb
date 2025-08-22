@@ -1,10 +1,10 @@
 class GiveMeHours < Formula
   desc "Track git commit hours across multiple repositories"
   homepage "https://github.com/francois-p-peloquin/give-me-hours"
-  url "https://github.com/francois-p-peloquin/give-me-hours/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "8f82c421379a417f1ed8a03984be11e7ffefc908c8d45ef54d06e2302367fe62"
+  url "https://github.com/francois-p-peloquin/give-me-hours/archive/refs/tags/v1.0.1.tar.gz"
+  sha256 "a2e3f894961963b2d04fe5e3a8bd569af42efb8f802a828830111104e70086d7"
+  version "1.0.1"
   license "MIT"
-  version "1.0.0"
 
   depends_on "node"
   depends_on "git"
