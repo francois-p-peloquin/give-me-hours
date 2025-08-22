@@ -1,7 +1,7 @@
 class GiveMeHours < Formula
   desc "Track git commit hours across multiple repositories"
-  homepage "https://github.com/yourusername/give-me-hours"
-  url "https://github.com/yourusername/give-me-hours/archive/v1.0.0.tar.gz"
+  homepage "https://github.com/francois-p-peloquin/give-me-hours"
+  url "https://github.com/francois-p-peloquin/give-me-hours/archive/v1.0.0.tar.gz"
   sha256 "your-sha256-hash-here"
   license "MIT"
 
