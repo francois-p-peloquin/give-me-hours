@@ -14,7 +14,7 @@ A command-line tool to track git commit hours across multiple repositories in th
 2. **Download and install the script:**
    ```bash
    # Download the script
-   curl -o give-me-hours https://raw.githubusercontent.com/yourusername/give-me-hours/main/give-me-hours
+   curl -o give-me-hours https://raw.githubusercontent.com/francois-p-peloquin/give-me-hours/main/give-me-hours
 
    # Make it executable
    chmod +x give-me-hours
@@ -38,7 +38,7 @@ A command-line tool to track git commit hours across multiple repositories in th
 2. **Create a Homebrew tap:**
    ```bash
    # Create your own tap repository
-   git clone https://github.com/yourusername/homebrew-tap.git
+   git clone https://github.com/francois-p-peloquin/homebrew-tap.git
    cd homebrew-tap
 
    # Add the formula
@@ -50,7 +50,7 @@ A command-line tool to track git commit hours across multiple repositories in th
 3. **Install via Homebrew:**
    ```bash
    # Add your tap
-   brew tap yourusername/tap
+   brew tap francois-p-peloquin/tap
 
    # Install the package
    brew install give-me-hours
