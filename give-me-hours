@@ -1,0 +1,207 @@
+#!/bin/bash
+
+# give-me-hours - Track git commit hours across multiple repositories
+# Version: 1.0.0
+
+# Function to display help
+help() {
+  echo "give-me-hours - Track git commit hours across multiple repositories"
+  echo ""
+  echo "Usage: give-me-hours [today|yesterday|YYYY-MM-DD] [--file] [--help]"
+  echo ""
+  echo "Options:"
+  echo "  today (default)    - Get hours for today"
+  echo "  yesterday          - Get hours for yesterday"
+  echo "  YYYY-MM-DD         - Get hours for specific date"
+  echo "  --file             - Write output to a file (default: console output)"
+  echo "  --help             - Show this help message"
+  echo ""
+  echo "Examples:"
+  echo "  give-me-hours                    # Show today's hours"
+  echo "  give-me-hours yesterday          # Show yesterday's hours"
+  echo "  give-me-hours 2024-08-22         # Show hours for specific date"
+  echo "  give-me-hours today --file       # Save today's hours to CSV file"
+  echo ""
+  echo "Requirements:"
+  echo "  - git-hours (install with: npm install -g git-hours)"
+  echo "  - Git global username must be set"
+  echo ""
+}
+
+# Check dependencies
+check_dependencies() {
+  # Check if git-hours is installed
+  if ! command -v git-hours &> /dev/null; then
+    echo "Error: git-hours is not installed"
+    echo "Install it with: npm install -g git-hours"
+    exit 1
+  fi
+
+  # Check if git is installed
+  if ! command -v git &> /dev/null; then
+    echo "Error: git is not installed"
+    exit 1
+  fi
+
+  # Check if git global username is set
+  GIT_NAME=$(git config --global user.name)
+  if [ -z "$GIT_NAME" ]; then
+    echo "Error: Git global username is not set"
+    echo "Set it with: git config --global user.name 'Your Name'"
+    exit 1
+  fi
+}
+
+# Function to get date command based on OS
+get_date_cmd() {
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    echo "date"
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    echo "date"
+  else
+    # Default to date
+    echo "date"
+  fi
+}
+
+# Function to get yesterday's date (cross-platform)
+get_yesterday_date() {
+  local date_cmd=$(get_date_cmd)
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    $date_cmd -v-1d "+%Y-%m-%d"
+  else
+    # Linux and others
+    $date_cmd -d "yesterday" "+%Y-%m-%d"
+  fi
+}
+
+# Default values
+OUTPUT_TO_FILE=false
+DATE_ARG=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --help)
+      help
+      exit 0
+      ;;
+    --file)
+      OUTPUT_TO_FILE=true
+      shift
+      ;;
+    today|yesterday)
+      DATE_ARG="$1"
+      shift
+      ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
+      DATE_ARG="$1"
+      shift
+      ;;
+    *)
+      echo "Error: Unknown argument '$1'"
+      help
+      exit 1
+      ;;
+  esac
+done
+
+# Set default date if not provided
+if [ -z "$DATE_ARG" ]; then
+  DATE_ARG="today"
+fi
+
+# Check dependencies
+check_dependencies
+
+echo "Git username: $GIT_NAME"
+
+# Set date range based on parameter
+case "$DATE_ARG" in
+  "today")
+    START_DATE=$(date "+%Y-%m-%d 00:00:00")
+    END_DATE=$(date "+%Y-%m-%d 23:59:59")
+    OUTPUT_FILE="give_me_hours__worked_today.csv"
+    ;;
+  "yesterday")
+    YESTERDAY=$(get_yesterday_date)
+    START_DATE="$YESTERDAY 00:00:00"
+    END_DATE="$YESTERDAY 23:59:59"
+    OUTPUT_FILE="give_me_hours__worked_yesterday.csv"
+    ;;
+  *)
+    # Validate date format
+    if [[ ! "$DATE_ARG" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+      echo "Error: Invalid date format. Please use YYYY-MM-DD"
+      help
+      exit 1
+    fi
+    START_DATE="$DATE_ARG 00:00:00"
+    END_DATE="$DATE_ARG 23:59:59"
+    OUTPUT_FILE="give_me_hours__worked_${DATE_ARG}.csv"
+    ;;
+esac
+
+echo ""
+echo "Getting hours from $START_DATE to $END_DATE"
+echo ""
+
+# Create temporary file for data collection
+TEMP_FILE=$(mktemp)
+echo "Folder,Hours" > "$TEMP_FILE"
+
+# Track if any hours were found
+HOURS_FOUND=false
+
+# Loop through all subdirectories that are git repositories
+for dir in $(find . -maxdepth 1 -type d -not -path "*/\.*" | sort); do
+  if [ -d "$dir/.git" ]; then
+    cd "$dir" || continue
+
+    # Run git hours and extract results
+    HOURS=$(git hours -since "$START_DATE" -before "$END_DATE" -author "$GIT_NAME" 2>/dev/null)
+
+    # Add to output if hours were worked (not 0s)
+    if [[ $HOURS == *"h"* && $HOURS != *": 0s"* ]]; then
+      HOURS_CLEAN=$(echo "$HOURS" | grep -o '[0-9]\+h[0-9]\+m[0-9]\+s' | head -1)
+      if [ -n "$HOURS_CLEAN" ]; then
+        echo "${dir#./},$HOURS_CLEAN" >> "$TEMP_FILE"
+        HOURS_FOUND=true
+      fi
+    fi
+
+    cd ..
+  fi
+done
+
+# Output results
+if [ "$HOURS_FOUND" = false ]; then
+  echo "No hours found for the specified period."
+  rm "$TEMP_FILE"
+  exit 0
+fi
+
+if [ "$OUTPUT_TO_FILE" = true ]; then
+  cp "$TEMP_FILE" "$OUTPUT_FILE"
+  echo "Hours saved to $OUTPUT_FILE"
+else
+  # Display as formatted table
+  awk -F, 'BEGIN {
+    printf "┌──────────────────────────────────────────┬────────────┐\n"
+    printf "│ %-40s │ %-10s │\n", "Repository", "Hours"
+    printf "├──────────────────────────────────────────┼────────────┤\n"
+  }
+  NR > 1 {
+    printf "│ %-40s │ %-10s │\n", $1, $2
+  }
+  END {
+    printf "└──────────────────────────────────────────┴────────────┘\n"
+  }' "$TEMP_FILE"
+fi
+
+# Clean up
+rm "$TEMP_FILE"
