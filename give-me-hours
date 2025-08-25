@@ -362,6 +362,21 @@ total_hours_seconds=0
 repos_found=0
 all_commit_messages=""
 
+# Find the lib directory once at the start if in summary mode
+GLOBAL_LIB_DIR=""
+if [ "$SUMMARY_MODE" = true ]; then
+    SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
+    SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+    
+    # Check locations where lib might be installed
+    for potential_lib in "$SCRIPT_DIR/lib" "$SCRIPT_DIR/../lib" "/usr/local/lib/give-me-hours" "/opt/homebrew/lib/give-me-hours" "$(dirname "$0")/lib"; do
+        if [ -n "$potential_lib" ] && [ -f "$potential_lib/summary.js" ]; then
+            GLOBAL_LIB_DIR="$potential_lib"
+            break
+        fi
+    done
+fi
+
 # Loop through all subdirectories that are git repositories
 for dir in $(find . -maxdepth 1 -type d -not -path "*/\.*" | sort); do
     if [ -d "$dir/.git" ]; then
@@ -381,7 +396,15 @@ for dir in $(find . -maxdepth 1 -type d -not -path "*/\.*" | sort); do
             repo_commits=$(get_git_commits "$START_DATE" "$END_DATE" "$GIT_NAME" | cut -d'|' -f3)
             if [ -n "$repo_commits" ]; then
                 all_commit_messages="$all_commit_messages$repo_commits"$'\n'
-                repo_summary="Processed"
+                
+                # Generate summary for this specific repository using global lib dir
+                if command -v node >/dev/null 2>&1 && [ -n "$GLOBAL_LIB_DIR" ] && [ -f "$GLOBAL_LIB_DIR/summary.js" ]; then
+                    repo_summary=$(echo "$repo_commits" | node "$GLOBAL_LIB_DIR/summary.js" -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
+                    # Remove commas and newlines from summary for CSV compatibility
+                    repo_summary=$(echo "$repo_summary" | tr ',' ';' | tr '\n' ' ')
+                else
+                    repo_summary="Summary unavailable"
+                fi
             else
                 repo_summary="No commits"
             fi
@@ -425,23 +448,10 @@ if [ $total_hours_seconds -gt 0 ]; then
     total_formatted=$(format_duration "$total_hours_seconds")
     if [ "$SUMMARY_MODE" = true ]; then
         write_output "────────────────────────────────────────,─────────────────,────────────────────────────────────────" false
-        # Generate overall summary
+        # Generate overall summary using global lib dir
         overall_summary=""
-        # Find the lib directory - check multiple locations
-        SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-        SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-        LIB_DIR=""
-        
-        # Check locations where lib might be installed
-        for potential_lib in "$SCRIPT_DIR/lib" "$SCRIPT_DIR/../lib" "/usr/local/lib/give-me-hours" "/opt/homebrew/lib/give-me-hours" "$(dirname "$0")/lib"; do
-            if [ -n "$potential_lib" ] && [ -f "$potential_lib/summary.js" ]; then
-                LIB_DIR="$potential_lib"
-                break
-            fi
-        done
-        
-        if [ -n "$all_commit_messages" ] && command -v node >/dev/null 2>&1 && [ -n "$LIB_DIR" ] && [ -f "$LIB_DIR/summary.js" ]; then
-            overall_summary=$(echo "$all_commit_messages" | node "$LIB_DIR/summary.js" -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
+        if [ -n "$all_commit_messages" ] && command -v node >/dev/null 2>&1 && [ -n "$GLOBAL_LIB_DIR" ] && [ -f "$GLOBAL_LIB_DIR/summary.js" ]; then
+            overall_summary=$(echo "$all_commit_messages" | node "$GLOBAL_LIB_DIR/summary.js" -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
             overall_summary=$(echo "$overall_summary" | tr ',' ';' | tr '\n' ' ')
         else
             overall_summary="Overall summary unavailable"
