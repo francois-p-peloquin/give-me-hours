@@ -12,10 +12,10 @@ class GiveMeHours < Formula
 
   def install
     bin.install "give-me-hours"
-    
+
     # Install lib directory with Node.js summarization service
     lib.install Dir["lib/*"]
-    
+
     # Install Node.js dependencies for summarization
     cd lib do
       system "npm", "install", "--production"
@@ -28,11 +28,12 @@ class GiveMeHours < Formula
       git config --global user.name "Your Name"
 
       Summary feature requires Node.js dependencies which have been installed automatically.
-      
+
       Usage examples:
         give-me-hours today
-        give-me-hours yesterday --hours-rounding 0.5 --padding-before 0.25
+        give-me-hours yesterday --summary
         give-me-hours 2024-01-15 --file
+        give-me-hours 2025-08-15 --hours-rounding 0.5 --padding-before 0.25
     EOS
   end
 
