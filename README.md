@@ -81,12 +81,12 @@ Getting hours from 2024-08-22 00:00:00 to 2024-08-22 23:59:59
 ## Creating a new release on Homebrew
 
 1. **Create a new release on Github** with a version number and new tag (eg `v1.0.9`).
-2. **Update `Formula/give-me-hours.sh`** with the latest `url`, `version`, and `sha256` variables.
+2. **Update `Formula/give-me-hours.rb`** with the latest `url`, `version`, and `sha256` variables.
 ```bash
   # Grab the latest SHA256 variable
   curl -sL https://github.com/francois-p-peloquin/give-me-hours/archive/v1.0.9.tar.gz | shasum -a 256
 ```
-3. **Copy `Formula/give-me-hours.sh` to your homebrew-tap** repo.
+3. **Copy `Formula/give-me-hours.rb` to your homebrew-tap** repo.
 ```bash
   # In the working directory
   cp ./Formula/give-me-hours.rb ../homebrew-tap/Formula/give-me-hours.rb
@@ -115,6 +115,5 @@ Getting hours from 2024-08-22 00:00:00 to 2024-08-22 23:59:59
 ## Notes
 
 - The tool looks for git repositories in the current directory (one level deep)
-- Requires `git-hours` npm package to be installed globally
 - Works with any directory structure containing multiple git repos
 - Cross-platform date handling for macOS and Linux
