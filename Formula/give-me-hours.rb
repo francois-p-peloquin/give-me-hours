@@ -18,7 +18,7 @@ class GiveMeHours < Formula
 
     # Install Node.js dependencies for summarization
     cd lib do
-      system "npm", "install", "--production"
+      system "npm", "install", "--omit=dev"
     end
   end
 
