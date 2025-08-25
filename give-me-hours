@@ -11,6 +11,8 @@ DEBUG=false
 
 # Default values for folder iteration
 OUTPUT_TO_FILE=false
+SUMMARY_MODE=false
+SUMMARY_WORDS=200
 GIT_NAME=$(git config --global user.name 2>/dev/null || echo "")
 
 # Helper functions for git-hours
@@ -18,7 +20,7 @@ show_help() {
     cat << EOF
 give-me-hours.sh - Calculate working hours from git commits across multiple repositories
 
-Usage: give-me-hours.sh [today|yesterday|YYYY-MM-DD] [--file] [--help] [--debug] [-d DURATION]
+Usage: give-me-hours.sh [today|yesterday|YYYY-MM-DD] [--file] [--help] [--debug] [-d DURATION] [--summary] [-w WORDS]
 
 Date Options:
     today (default)      - Get hours for today
@@ -30,12 +32,16 @@ Output Options:
     --help              - Show this help message
     --debug             - Show detailed commit information
     -d, --duration      - Maximum gap between commits (default: 1h)
+    --summary           - Generate summary of commit messages
+    -w, --words         - Maximum words in summary (default: 200)
 
 Examples:
     give-me-hours.sh
     give-me-hours.sh yesterday --file
     give-me-hours.sh 2024-01-15 --debug
     give-me-hours.sh today --file -d 0.5h
+    give-me-hours.sh today --summary
+    give-me-hours.sh yesterday --summary -w 150
 
 Duration formats:
     1h, 2h              - hours
@@ -272,6 +278,14 @@ while [[ $# -gt 0 ]]; do
             DURATION=$(parse_duration "$2")
             shift 2
             ;;
+        --summary)
+            SUMMARY_MODE=true
+            shift
+            ;;
+        -w|--words)
+            SUMMARY_WORDS="$2"
+            shift 2
+            ;;
         today|yesterday)
             DATE_ARG="$1"
             shift
@@ -337,11 +351,16 @@ fi
 echo ""
 
 # Create the CSV header
-write_output "Folder,Hours" true
+if [ "$SUMMARY_MODE" = true ]; then
+    write_output "Folder,Hours,Summary" true
+else
+    write_output "Folder,Hours" true
+fi
 
 # Keep track of total hours
 total_hours_seconds=0
 repos_found=0
+all_commit_messages=""
 
 # Loop through all subdirectories that are git repositories
 for dir in $(find . -maxdepth 1 -type d -not -path "*/\.*" | sort); do
@@ -356,13 +375,37 @@ for dir in $(find . -maxdepth 1 -type d -not -path "*/\.*" | sort); do
         # Get working hours for this repository
         hours_seconds=$(get_hours_for_repo "$START_DATE" "$END_DATE" "$GIT_NAME")
 
+        # Get commit messages for this repository if in summary mode
+        repo_summary=""
+        if [ "$SUMMARY_MODE" = true ]; then
+            repo_commits=$(get_git_commits "$START_DATE" "$END_DATE" "$GIT_NAME" | cut -d'|' -f3)
+            if [ -n "$repo_commits" ]; then
+                all_commit_messages="$all_commit_messages$repo_commits"$'\n'
+                
+                # Generate summary for this specific repository
+                if command -v node >/dev/null 2>&1 && [ -f "lib/summary.js" ]; then
+                    repo_summary=$(echo "$repo_commits" | node lib/summary.js -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
+                    # Remove commas and newlines from summary for CSV compatibility
+                    repo_summary=$(echo "$repo_summary" | tr ',' ';' | tr '\n' ' ')
+                else
+                    repo_summary="Summary unavailable"
+                fi
+            else
+                repo_summary="No commits"
+            fi
+        fi
+
         # Add to output if hours were worked (more than 0 seconds)
         if [ "$hours_seconds" -gt 0 ]; then
             hours_formatted=$(format_duration "$hours_seconds")
             total_hours_seconds=$((total_hours_seconds + hours_seconds))
 
             cd ..
-            write_output "${dir#./},$hours_formatted" false
+            if [ "$SUMMARY_MODE" = true ]; then
+                write_output "${dir#./},$hours_formatted,\"$repo_summary\"" false
+            else
+                write_output "${dir#./},$hours_formatted" false
+            fi
 
             if [ "$DEBUG" = true ]; then
                 echo "Found $(format_duration "$hours_seconds") in ${dir#./}" >&2
@@ -388,8 +431,21 @@ fi
 # Add total row
 if [ $total_hours_seconds -gt 0 ]; then
     total_formatted=$(format_duration "$total_hours_seconds")
-    write_output "," false
-    write_output "TOTAL,$total_formatted" false
+    if [ "$SUMMARY_MODE" = true ]; then
+        write_output "────────────────────────────────────────,─────────────────,────────────────────────────────────────" false
+        # Generate overall summary
+        overall_summary=""
+        if [ -n "$all_commit_messages" ] && command -v node >/dev/null 2>&1 && [ -f "lib/summary.js" ]; then
+            overall_summary=$(echo "$all_commit_messages" | node lib/summary.js -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
+            overall_summary=$(echo "$overall_summary" | tr ',' ';' | tr '\n' ' ')
+        else
+            overall_summary="Overall summary unavailable"
+        fi
+        write_output "TOTAL,$total_formatted,\"$overall_summary\"" false
+    else
+        write_output "────────────────────────────────────────,─────────────────" false
+        write_output "TOTAL,$total_formatted" false
+    fi
 fi
 
 if [ "$OUTPUT_TO_FILE" = true ]; then
@@ -400,15 +456,43 @@ else
     echo ""
 
     # Display results in a nice table format
-    awk -F, '{
-        if (NR==1) {
-            printf "┌──────────────────────────────────────────┬─────────────────┐\n"
-            printf "│ %-40s │ %-15s │\n", $1, $2;
-            printf "├──────────────────────────────────────────┼─────────────────┤"
-        } else {
-            printf "\n│ %-40s │ %-15s │", $1, $2
-        }
-    } END { print "" }' /tmp/give_me_hours_data.csv
+    if [ "$SUMMARY_MODE" = true ]; then
+        awk -F, '{
+            if (NR==1) {
+                printf "┌──────────────────────────────────────────┬─────────────────┬──────────────────────────────────────────┐\n"
+                printf "│ %-40s │ %-15s │ %-40s │\n", $1, $2, $3;
+                printf "├──────────────────────────────────────────┼─────────────────┼──────────────────────────────────────────┤"
+            } else if ($1 ~ /^─+$/) {
+                # This is a separator line - render as table separator
+                printf "\n├──────────────────────────────────────────┼─────────────────┼──────────────────────────────────────────┤"
+            } else {
+                # Handle quoted fields by removing quotes and truncating summary
+                gsub(/"/, "", $3)
+                summary = $3
+                if (length(summary) > 40) {
+                    summary = substr(summary, 1, 37) "..."
+                }
+                printf "\n│ %-40s │ %-15s │ %-40s │", $1, $2, summary
+            }
+        } END { 
+            print "\n└──────────────────────────────────────────┴─────────────────┴──────────────────────────────────────────┘" 
+        }' /tmp/give_me_hours_data.csv
+    else
+        awk -F, '{
+            if (NR==1) {
+                printf "┌──────────────────────────────────────────┬─────────────────┐\n"
+                printf "│ %-40s │ %-15s │\n", $1, $2;
+                printf "├──────────────────────────────────────────┼─────────────────┤"
+            } else if ($1 ~ /^─+$/) {
+                # This is a separator line - render as table separator
+                printf "\n├──────────────────────────────────────────┼─────────────────┤"
+            } else {
+                printf "\n│ %-40s │ %-15s │", $1, $2
+            }
+        } END { 
+            print "\n└──────────────────────────────────────────┴─────────────────┘" 
+        }' /tmp/give_me_hours_data.csv
+    fi
 
     echo ""
     echo "Total hours worked: $(format_duration "$total_hours_seconds")"

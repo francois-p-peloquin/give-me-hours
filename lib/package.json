@@ -1,0 +1,11 @@
+{
+  "name": "give-me-hours-summarizer",
+  "version": "1.0.0",
+  "description": "Summarization service for git commit messages",
+  "main": "summary.js",
+  "dependencies": {
+    "node-summary": "^1.2.1",
+    "lexrank": "^1.0.0",
+    "commander": "^12.0.0"
+  }
+}
