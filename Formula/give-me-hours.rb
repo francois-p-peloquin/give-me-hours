@@ -10,6 +10,7 @@ class GiveMeHours < Formula
 
   def install
     bin.install "give-me-hours"
+    lib.install "summarize.js" if build.with?("node")
   end
 
   def caveats
