@@ -13,7 +13,7 @@ PADDING_BEFORE=0.5   # Default padding before each session (0.5 hours = 30 minut
 
 # Default values for folder iteration
 OUTPUT_TO_FILE=false
-SUMMARY_MODE=true
+SUMMARY_MODE=false
 SUMMARY_WORDS=50
 GIT_NAME=$(git config --global user.name 2>/dev/null || echo "")
 
@@ -307,6 +307,7 @@ if [ -z "$GIT_NAME" ]; then
     exit 1
 fi
 
+echo ""
 echo "Git username: $GIT_NAME"
 
 # Parse command line arguments
@@ -402,12 +403,10 @@ case "$DATE_ARG" in
         ;;
 esac
 
-echo ""
 echo "Getting hours from $START_DATE to $END_DATE"
 if [ "$DEBUG" = true ]; then
     echo "Duration threshold: $(format_duration "$DURATION")"
 fi
-echo ""
 
 # Create the CSV header
 if [ "$SUMMARY_MODE" = true ]; then
@@ -524,7 +523,13 @@ else
     # Display results in a nice format
     if [ "$SUMMARY_MODE" = true ]; then
         # Use list format for summaries
-        awk -F, '{
+        awk -F, '
+        function print_separator() {
+            "stty size 2>/dev/null | awk \"{print \\$2}\" 2>/dev/null || tput cols 2>/dev/null || echo 80" | getline terminal_width
+            for (i = 1; i <= terminal_width; i++) printf "─"
+            printf "\n"
+        }
+        {
             if (NR==1) {
                 # Skip header row
                 next
@@ -532,9 +537,9 @@ else
                 # Skip separator lines
                 next
             } else if ($1 == "TOTAL") {
-                printf "\n┌──────────────────────────────────────────┬─────────────────┐\n"
-                printf "│ %-40s │ %-15s │\n", "TOTAL", $2
-                printf "└──────────────────────────────────────────┴─────────────────┘\n"
+                print_separator()
+                printf "%-60s %s\n", "TOTAL", $2
+                print_separator()
             } else if ($1 != "" && $2 != "") {
                 # Display repo with full summary
                 gsub(/"/, "", $3)
@@ -542,12 +547,10 @@ else
                 if (summary == "" || summary == " ") {
                     summary = "No commits"
                 }
-                printf "\n┌──────────────────────────────────────────┬─────────────────┐\n"
-                printf "│ %-40s │ %-15s │\n", $1, $2
-                printf "├──────────────────────────────────────────┴─────────────────┤\n"
-                printf "│ Summary:                                                   │\n"
-                # printf "└────────────────────────────────────────────────────────────┘\n"
-                printf "\n"
+                print_separator()
+                printf "%-60s %s\n", $1, $2
+                print_separator()
+                # printf Summary: "
                 printf "%s\n", summary
                 printf "\n"
                 printf "\n"
