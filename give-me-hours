@@ -447,17 +447,17 @@ fi
 if [ $total_hours_seconds -gt 0 ]; then
     total_formatted=$(format_duration "$total_hours_seconds")
     if [ "$SUMMARY_MODE" = true ]; then
-        write_output "────────────────────────────────────────,─────────────────,────────────────────────────────────────" false
+        write_output "," false
         write_output "TOTAL,$total_formatted," false
     else
-        write_output "────────────────────────────────────────,─────────────────" false
+        write_output "," false
         write_output "TOTAL,$total_formatted" false
     fi
 fi
 
 if [ "$OUTPUT_TO_FILE" = true ]; then
     echo "Hours saved to $OUTPUT_FILE"
-    echo "Total hours worked: $(format_duration "$total_hours_seconds")"
+    # echo "Total hours worked: $(format_duration "$total_hours_seconds")"
 else
     echo "Found $repos_found git repositories"
     echo ""
