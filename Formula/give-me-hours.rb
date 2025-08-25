@@ -1,9 +1,9 @@
 class GiveMeHours < Formula
   desc "Track git commit hours across multiple repositories with commit summarization"
   homepage "https://github.com/francois-p-peloquin/give-me-hours"
-  url "https://github.com/francois-p-peloquin/give-me-hours/archive/refs/tags/v1.0.1.tar.gz"
-  sha256 "a2e3f894961963b2d04fe5e3a8bd569af42efb8f802a828830111104e70086d7"
-  version "1.0.1"
+  url "https://github.com/francois-p-peloquin/give-me-hours/archive/refs/tags/v1.0.2.tar.gz"
+  sha256 "dfbffa8b89aca5bdbe5383161eacd3f4421bec5e52e921a520802eff307e9619"
+  version "1.0.2"
   license "MIT"
 
   depends_on "git"
