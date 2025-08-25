@@ -117,3 +117,8 @@ Getting hours from 2024-08-22 00:00:00 to 2024-08-22 23:59:59
 - The tool looks for git repositories in the current directory (one level deep)
 - Works with any directory structure containing multiple git repos
 - Cross-platform date handling for macOS and Linux
+
+## TODO/Considerations
+
+- Add rounding/padding to notes logged at start of console log.
+- Less space around hours in summary view.
