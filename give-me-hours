@@ -367,7 +367,7 @@ GLOBAL_LIB_DIR=""
 if [ "$SUMMARY_MODE" = true ]; then
     SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
     SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-    
+
     # Check locations where lib might be installed
     for potential_lib in "$SCRIPT_DIR/lib" "$SCRIPT_DIR/../lib" "/usr/local/lib/give-me-hours" "/opt/homebrew/lib/give-me-hours" "$(dirname "$0")/lib"; do
         if [ -n "$potential_lib" ] && [ -f "$potential_lib/summary.js" ]; then
@@ -390,13 +390,13 @@ for dir in $(find . -maxdepth 1 -type d -not -path "*/\.*" | sort); do
         # Get working hours for this repository
         hours_seconds=$(get_hours_for_repo "$START_DATE" "$END_DATE" "$GIT_NAME")
 
-        # Get commit messages for this repository if in summary mode  
+        # Get commit messages for this repository if in summary mode
         repo_summary=""
         if [ "$SUMMARY_MODE" = true ]; then
             repo_commits=$(get_git_commits "$START_DATE" "$END_DATE" "$GIT_NAME" | cut -d'|' -f3)
             if [ -n "$repo_commits" ]; then
                 all_commit_messages="$all_commit_messages$repo_commits"$'\n'
-                
+
                 # Generate summary for this specific repository using global lib dir
                 if command -v node >/dev/null 2>&1 && [ -n "$GLOBAL_LIB_DIR" ] && [ -f "$GLOBAL_LIB_DIR/summary.js" ]; then
                     repo_summary=$(echo "$repo_commits" | node "$GLOBAL_LIB_DIR/summary.js" -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
@@ -448,15 +448,7 @@ if [ $total_hours_seconds -gt 0 ]; then
     total_formatted=$(format_duration "$total_hours_seconds")
     if [ "$SUMMARY_MODE" = true ]; then
         write_output "────────────────────────────────────────,─────────────────,────────────────────────────────────────" false
-        # Generate overall summary using global lib dir
-        overall_summary=""
-        if [ -n "$all_commit_messages" ] && command -v node >/dev/null 2>&1 && [ -n "$GLOBAL_LIB_DIR" ] && [ -f "$GLOBAL_LIB_DIR/summary.js" ]; then
-            overall_summary=$(echo "$all_commit_messages" | node "$GLOBAL_LIB_DIR/summary.js" -w "$SUMMARY_WORDS" 2>/dev/null || echo "Error generating summary")
-            overall_summary=$(echo "$overall_summary" | tr ',' ';' | tr '\n' ' ')
-        else
-            overall_summary="Overall summary unavailable"
-        fi
-        write_output "TOTAL,$total_formatted,\"$overall_summary\"" false
+        write_output "TOTAL,$total_formatted," false
     else
         write_output "────────────────────────────────────────,─────────────────" false
         write_output "TOTAL,$total_formatted" false
@@ -470,29 +462,36 @@ else
     echo "Found $repos_found git repositories"
     echo ""
 
-    # Display results in a nice table format
+    # Display results in a nice format
     if [ "$SUMMARY_MODE" = true ]; then
+        # Use list format for summaries
         awk -F, '{
             if (NR==1) {
-                printf "┌──────────────────────────────────────────┬─────────────────┬──────────────────────────────────────────┐\n"
-                printf "│ %-40s │ %-15s │ %-40s │\n", $1, $2, $3;
-                printf "├──────────────────────────────────────────┼─────────────────┼──────────────────────────────────────────┤"
+                # Skip header row
+                next
             } else if ($1 ~ /^─+$/) {
-                # This is a separator line - render as table separator
-                printf "\n├──────────────────────────────────────────┼─────────────────┼──────────────────────────────────────────┤"
+                # Skip separator lines
+                next
+            } else if ($1 == "TOTAL") {
+                printf "\n┌──────────────────────────────────────────┬─────────────────┐\n"
+                printf "│ %-40s │ %-15s │\n", "TOTAL", $2
+                printf "└──────────────────────────────────────────┴─────────────────┘\n"
             } else {
-                # Handle quoted fields by removing quotes and truncating summary
+                # Display repo with full summary
                 gsub(/"/, "", $3)
                 summary = $3
-                if (length(summary) > 40) {
-                    summary = substr(summary, 1, 37) "..."
+                if (summary == "" || summary == " ") {
+                    summary = "No commits"
                 }
-                printf "\n│ %-40s │ %-15s │ %-40s │", $1, $2, summary
+                printf "\n┌──────────────────────────────────────────┬─────────────────┐\n"
+                printf "│ %-40s │ %-15s │\n", $1, $2
+                printf "└──────────────────────────────────────────┴─────────────────┘\n"
+                printf "%s\n", summary
+                printf "\n"
             }
-        } END { 
-            print "\n└──────────────────────────────────────────┴─────────────────┴──────────────────────────────────────────┘" 
         }' /tmp/give_me_hours_data.csv
     else
+        # Use table format for non-summary mode
         awk -F, '{
             if (NR==1) {
                 printf "┌──────────────────────────────────────────┬─────────────────┐\n"
@@ -504,13 +503,13 @@ else
             } else {
                 printf "\n│ %-40s │ %-15s │", $1, $2
             }
-        } END { 
-            print "\n└──────────────────────────────────────────┴─────────────────┘" 
+        } END {
+            print "\n└──────────────────────────────────────────┴─────────────────┘"
         }' /tmp/give_me_hours_data.csv
     fi
 
-    echo ""
-    echo "Total hours worked: $(format_duration "$total_hours_seconds")"
+    # echo ""
+    # echo "Total hours worked: $(format_duration "$total_hours_seconds")"
 
     # Clean up temporary file
     rm -f /tmp/give_me_hours_data.csv
