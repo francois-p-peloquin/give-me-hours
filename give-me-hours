@@ -13,8 +13,8 @@ PADDING_BEFORE=0.5   # Default padding before each session (0.5 hours = 30 minut
 
 # Default values for folder iteration
 OUTPUT_TO_FILE=false
-SUMMARY_MODE=false
-SUMMARY_WORDS=200
+SUMMARY_MODE=true
+SUMMARY_WORDS=50
 GIT_NAME=$(git config --global user.name 2>/dev/null || echo "")
 
 # Helper functions for git-hours
@@ -35,7 +35,7 @@ Output Options:
     --debug             - Show detailed commit information
     -d, --duration      - Maximum gap between commits (default: 1h)
     --summary           - Generate summary of commit messages
-    -w, --words         - Maximum words in summary (default: 200)
+    -w, --words         - Maximum words in summary (default: 50)
     --hours-rounding    - Round up hours to nearest increment (default: 0.25)
     --padding-before    - Add time before each work session (default: 0.5)
 
@@ -129,11 +129,11 @@ round_hours() {
 add_padding_before() {
     local seconds="$1"
     local padding_before_hours="$2"
-    
+
     # Convert padding to seconds and add to total
     local padding_seconds=$(echo "scale=0; $padding_before_hours * 3600 / 1" | bc -l)
     local total_seconds=$((seconds + padding_seconds))
-    
+
     echo "$total_seconds"
 }
 
@@ -544,8 +544,12 @@ else
                 }
                 printf "\n┌──────────────────────────────────────────┬─────────────────┐\n"
                 printf "│ %-40s │ %-15s │\n", $1, $2
-                printf "└──────────────────────────────────────────┴─────────────────┘\n"
+                printf "├──────────────────────────────────────────┴─────────────────┤\n"
+                printf "│ Summary:                                                   │\n"
+                # printf "└────────────────────────────────────────────────────────────┘\n"
+                printf "\n"
                 printf "%s\n", summary
+                printf "\n"
                 printf "\n"
             }
         }' /tmp/give-me-hours-data.csv
