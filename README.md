@@ -14,13 +14,6 @@ A command-line tool to list out hours worked based on git log hours in a working
    ```
 
 ### Method 2: Direct Installation (For testing purposes)
-
-1. **Install git-hours dependency:**
-   ```bash
-   npm install -g git-hours
-   ```
-
-2. **Download and install the script:**
    ```bash
    # Download the script
    curl -o give-me-hours https://raw.githubusercontent.com/francois-p-peloquin/give-me-hours/main/give-me-hours
@@ -58,11 +51,6 @@ give-me-hours --help
 1. **Git configuration:**
    ```bash
    git config --global user.name "Your Name"
-   ```
-
-2. **git-hours dependency:**
-   ```bash
-   npm install -g git-hours
    ```
 
 ## Features
