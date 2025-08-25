@@ -6,12 +6,11 @@ class GiveMeHours < Formula
   version "1.0.1"
   license "MIT"
 
-  depends_on "node"
   depends_on "git"
-  depends_on "git-hours" => :optional
 
   def install
     bin.install "give-me-hours"
+    lib.install "summarize.js" if build.with?("node")
   end
 
   def caveats
