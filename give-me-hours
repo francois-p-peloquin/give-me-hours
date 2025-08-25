@@ -8,6 +8,8 @@ set -e
 # Default values for git-hours functionality
 DURATION=3600  # 1 hour in seconds
 DEBUG=false
+HOURS_ROUNDING=0.25  # Default rounding to nearest 0.25 hours (15 minutes)
+PADDING_BEFORE=0.5   # Default padding before each session (0.5 hours = 30 minutes)
 
 # Default values for folder iteration
 OUTPUT_TO_FILE=false
@@ -20,7 +22,7 @@ show_help() {
     cat << EOF
 give-me-hours.sh - Calculate working hours from git commits across multiple repositories
 
-Usage: give-me-hours.sh [today|yesterday|YYYY-MM-DD] [--file] [--help] [--debug] [-d DURATION] [--summary] [-w WORDS]
+Usage: give-me-hours.sh [today|yesterday|YYYY-MM-DD] [--file] [--help] [--debug] [-d DURATION] [--summary] [-w WORDS] [--hours-rounding HOURS] [--padding-before HOURS]
 
 Date Options:
     today (default)      - Get hours for today
@@ -34,6 +36,8 @@ Output Options:
     -d, --duration      - Maximum gap between commits (default: 1h)
     --summary           - Generate summary of commit messages
     -w, --words         - Maximum words in summary (default: 200)
+    --hours-rounding    - Round up hours to nearest increment (default: 0.25)
+    --padding-before    - Add time before each work session (default: 0.5)
 
 Examples:
     give-me-hours.sh
@@ -42,6 +46,10 @@ Examples:
     give-me-hours.sh today --file -d 0.5h
     give-me-hours.sh today --summary
     give-me-hours.sh yesterday --summary -w 150
+    give-me-hours.sh today --hours-rounding 0.5
+    give-me-hours.sh today --hours-rounding 1
+    give-me-hours.sh today --padding-before 1
+    give-me-hours.sh today --hours-rounding 0.5 --padding-before 0.25
 
 Duration formats:
     1h, 2h              - hours
@@ -100,6 +108,35 @@ timestamp_to_date() {
     fi
 }
 
+round_hours() {
+    local seconds="$1"
+    local rounding="$2"
+
+    # Convert seconds to fractional hours
+    local hours_decimal=$(echo "scale=4; $seconds / 3600" | bc -l)
+
+    # Round up to nearest rounding increment
+    local rounded_hours=$(echo "scale=4; $hours_decimal / $rounding" | bc -l)
+    local rounded_up=$(echo "scale=0; ($rounded_hours + 0.999999) / 1" | bc -l)  # Ceiling function
+    local final_hours=$(echo "scale=4; $rounded_up * $rounding" | bc -l)
+
+    # Convert back to seconds and ensure it's an integer
+    local rounded_seconds=$(echo "scale=0; $final_hours * 3600 / 1" | bc -l)
+
+    echo "$rounded_seconds"
+}
+
+add_padding_before() {
+    local seconds="$1"
+    local padding_before_hours="$2"
+    
+    # Convert padding to seconds and add to total
+    local padding_seconds=$(echo "scale=0; $padding_before_hours * 3600 / 1" | bc -l)
+    local total_seconds=$((seconds + padding_seconds))
+    
+    echo "$total_seconds"
+}
+
 format_duration() {
     local seconds="$1"
     local hours=$((seconds / 3600))
@@ -109,15 +146,17 @@ format_duration() {
     local result=""
 
     if [ $hours -gt 0 ]; then
-        result="${result}${hours}h"
-    fi
-
-    if [ $minutes -gt 0 ]; then
-        result="${result}${minutes}m"
-    fi
-
-    if [ $secs -gt 0 ] || [ -z "$result" ]; then
-        result="${result}${secs}s"
+        if [ $minutes -gt 0 ]; then
+            result="${hours}:$(printf "%02d" $minutes)"
+        else
+            result="${hours}:00"
+        fi
+    elif [ $minutes -gt 0 ]; then
+        result="0:$(printf "%02d" $minutes)"
+    elif [ $secs -gt 0 ]; then
+        result="0:00"  # Less than a minute shows as 0:00
+    else
+        result="0:00"
     fi
 
     echo "$result"
@@ -218,6 +257,18 @@ get_hours_for_repo() {
     local total_seconds
     total_seconds=$(echo "$commits_output" | calculate_working_hours)
 
+    # Apply rounding and padding if time was worked
+    if [ "$total_seconds" -gt 0 ]; then
+        # First round up to nearest increment
+        if [ "$(echo "$HOURS_ROUNDING > 0" | bc -l)" = "1" ]; then
+            total_seconds=$(round_hours "$total_seconds" "$HOURS_ROUNDING")
+        fi
+        # Then add padding before (setup time)
+        if [ "$(echo "$PADDING_BEFORE > 0" | bc -l)" = "1" ]; then
+            total_seconds=$(add_padding_before "$total_seconds" "$PADDING_BEFORE")
+        fi
+    fi
+
     echo "$total_seconds"
 }
 
@@ -284,6 +335,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         -w|--words)
             SUMMARY_WORDS="$2"
+            shift 2
+            ;;
+        --hours-rounding)
+            HOURS_ROUNDING="$2"
+            shift 2
+            ;;
+        --padding-before)
+            PADDING_BEFORE="$2"
             shift 2
             ;;
         today|yesterday)
@@ -476,7 +535,7 @@ else
                 printf "\n┌──────────────────────────────────────────┬─────────────────┐\n"
                 printf "│ %-40s │ %-15s │\n", "TOTAL", $2
                 printf "└──────────────────────────────────────────┴─────────────────┘\n"
-            } else {
+            } else if ($1 != "" && $2 != "") {
                 # Display repo with full summary
                 gsub(/"/, "", $3)
                 summary = $3
