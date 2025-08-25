@@ -233,9 +233,9 @@ write_output() {
         fi
     else
         if [ "$header" = true ]; then
-            echo "$content" > /tmp/give_me_hours_data.csv
+            echo "$content" > /tmp/give-me-hours-data.csv
         else
-            echo "$content" >> /tmp/give_me_hours_data.csv
+            echo "$content" >> /tmp/give-me-hours-data.csv
         fi
     fi
 }
@@ -312,7 +312,7 @@ case "$DATE_ARG" in
     "today")
         START_DATE=$(date "+%Y-%m-%d 00:00:00")
         END_DATE=$(date "+%Y-%m-%d 23:59:59")
-        OUTPUT_FILE="give_me_hours__worked_today.csv"
+        OUTPUT_FILE="give-me-hours--worked-today.csv"
         ;;
     "yesterday")
         if command -v gdate >/dev/null 2>&1; then
@@ -328,7 +328,7 @@ case "$DATE_ARG" in
             START_DATE=$(date -d "yesterday" "+%Y-%m-%d 00:00:00")
             END_DATE=$(date -d "yesterday" "+%Y-%m-%d 23:59:59")
         fi
-        OUTPUT_FILE="give_me_hours__worked_yesterday.csv"
+        OUTPUT_FILE="give-me-hours--worked-yesterday.csv"
         ;;
     *)
         # Check if date format is valid
@@ -339,7 +339,7 @@ case "$DATE_ARG" in
         fi
         START_DATE="$DATE_ARG 00:00:00"
         END_DATE="$DATE_ARG 23:59:59"
-        OUTPUT_FILE="give_me_hours__worked_${DATE_ARG}.csv"
+        OUTPUT_FILE="give-me-hours--worked-${DATE_ARG}.csv"
         ;;
 esac
 
@@ -489,7 +489,7 @@ else
                 printf "%s\n", summary
                 printf "\n"
             }
-        }' /tmp/give_me_hours_data.csv
+        }' /tmp/give-me-hours-data.csv
     else
         # Use table format for non-summary mode
         awk -F, '{
@@ -505,12 +505,12 @@ else
             }
         } END {
             print "\n└──────────────────────────────────────────┴─────────────────┘"
-        }' /tmp/give_me_hours_data.csv
+        }' /tmp/give-me-hours-data.csv
     fi
 
     # echo ""
     # echo "Total hours worked: $(format_duration "$total_hours_seconds")"
 
     # Clean up temporary file
-    rm -f /tmp/give_me_hours_data.csv
+    rm -f /tmp/give-me-hours-data.csv
 fi
